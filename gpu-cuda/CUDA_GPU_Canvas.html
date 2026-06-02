@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Programación GPU con CUDA — Fundamentos Teóricos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0e1a;
+    --surface:  #111827;
+    --card:     #1a2235;
+    --border:   #1e3a5f;
+    --accent1:  #00d4ff;
+    --accent2:  #7c3aed;
+    --accent3:  #10b981;
+    --accent4:  #f59e0b;
+    --text:     #e2e8f0;
+    --muted:    #94a3b8;
+    --code-bg:  #0d1117;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  /* ── HEADER ── */
+  .page-header {
+    text-align: center;
+    padding: 60px 0 48px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 56px;
+    position: relative;
+  }
+  .page-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 300px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent1), var(--accent2), transparent);
+  }
+  .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent1);
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    padding: 5px 14px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    line-height: 1.15;
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent1) 60%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 16px;
+    font-weight: 300;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 64px;
+  }
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent1);
+    margin-bottom: 10px;
+  }
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--accent1);
+    margin: 28px 0 10px;
+  }
+  p { margin-bottom: 14px; color: var(--text); }
+
+  /* ── CALLOUT ── */
+  .callout {
+    border-left: 3px solid var(--accent1);
+    background: rgba(0,212,255,0.05);
+    padding: 16px 20px;
+    border-radius: 0 6px 6px 0;
+    margin: 20px 0;
+    font-size: 14px;
+  }
+  .callout.warning { border-color: var(--accent4); background: rgba(245,158,11,0.06); }
+  .callout.success { border-color: var(--accent3); background: rgba(16,185,129,0.06); }
+  .callout strong { color: #fff; }
+
+  /* ── CODE ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 20px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .kw  { color: #ff79c6; }   /* keywords */
+  .fn  { color: #50fa7b; }   /* functions */
+  .tp  { color: #8be9fd; }   /* types */
+  .cm  { color: #6272a4; font-style: italic; } /* comments */
+  .nu  { color: #bd93f9; }   /* numbers */
+  .st  { color: #f1fa8c; }   /* strings */
+  .op  { color: #ff5555; }   /* operators/special */
+
+  /* ── DIAGRAM BOXES ── */
+  .diagram {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .diagram-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* CPU-GPU flow */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 16px 0;
+  }
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .flow-box.cpu  { border-color: var(--accent4); color: var(--accent4); }
+  .flow-box.gpu  { border-color: var(--accent1); color: var(--accent1); }
+  .flow-box.mem  { border-color: var(--accent3); color: var(--accent3); }
+  .flow-box.ker  { border-color: var(--accent2); color: var(--accent2); }
+  .arrow {
+    color: var(--muted);
+    font-size: 20px;
+    font-weight: 300;
+  }
+  .arrow.down { transform: rotate(90deg); display: block; margin: 4px auto; }
+
+  /* Grid hierarchy */
+  .grid-hierarchy {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  @media (max-width: 600px) { .grid-hierarchy { grid-template-columns: 1fr; } }
+  .hier-box {
+    border: 2px dashed;
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+  }
+  .hier-box.grid-level   { border-color: var(--accent2); }
+  .hier-box.block-level  { border-color: var(--accent1); }
+  .hier-box.thread-level { border-color: var(--accent3); }
+  .hier-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .hier-box.grid-level   .hier-label { color: var(--accent2); }
+  .hier-box.block-level  .hier-label { color: var(--accent1); }
+  .hier-box.thread-level .hier-label { color: var(--accent3); }
+  .hier-desc { font-size: 13px; color: var(--muted); }
+  .hier-var  { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #fff; margin-top: 8px; }
+
+  /* Memory table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 14px;
+  }
+  th {
+    background: var(--surface);
+    color: var(--accent1);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    vertical-align: top;
+  }
+  td:first-child { color: #fff; font-weight: 500; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin: 2px;
+  }
+  .tag.fast   { background: rgba(16,185,129,0.15); color: var(--accent3); }
+  .tag.slow   { background: rgba(245,158,11,0.15); color: var(--accent4); }
+  .tag.scope  { background: rgba(124,58,237,0.15); color: #a78bfa; }
+
+  /* Mapping visual */
+  .mapping-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: start;
+    margin: 20px 0;
+  }
+  .mapping-side {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .mapping-side h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mapping-side.cpu-side h4 { color: var(--accent4); }
+  .mapping-side.gpu-side h4 { color: var(--accent1); }
+  .mapping-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin: 4px 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+  }
+  .mapping-arrows {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-top: 40px;
+    font-size: 22px;
+    color: var(--muted);
+  }
+  .map-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+  }
+
+  /* Index formula */
+  .formula {
+    background: var(--code-bg);
+    border: 1px solid var(--accent2);
+    border-radius: 6px;
+    padding: 14px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    margin: 14px 0;
+    text-align: center;
+  }
+  .formula .var { color: var(--accent1); }
+  .formula .op2 { color: var(--accent4); }
+
+  /* Steps list */
+  .steps {
+    counter-reset: step-counter;
+    list-style: none;
+    padding: 0;
+  }
+  .steps li {
+    counter-increment: step-counter;
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+  }
+  .steps li::before {
+    content: counter(step-counter, decimal-leading-zero);
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent1);
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    margin-top: 2px;
+  }
+  .steps li .step-content strong {
+    display: block;
+    color: #fff;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .steps li .step-content span { color: var(--muted); font-size: 14px; }
+
+  /* TOC */
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 48px;
+  }
+  .toc h3 {
+    margin-top: 0;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .toc ol { padding-left: 20px; margin-top: 12px; }
+  .toc li { margin-bottom: 8px; }
+  .toc a { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .toc a:hover { color: var(--accent1); }
+
+  /* dim cards */
+  .cards3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 20px 0;
+  }
+  @media (max-width: 640px) { .cards3 { grid-template-columns: 1fr; } }
+  .dim-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .dim-card .dim-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .dim-card:nth-child(1) .dim-title { color: var(--accent3); }
+  .dim-card:nth-child(2) .dim-title { color: var(--accent1); }
+  .dim-card:nth-child(3) .dim-title { color: var(--accent2); }
+  .dim-card .dim-case { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .dim-card code {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent4);
+    margin-top: 8px;
+    background: var(--code-bg);
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="badge">Computación Paralela · GPU Programming</div>
+  <h1>Fundamentos de Programación GPU con CUDA</h1>
+  <p class="subtitle">Arquitectura, kernels, jerarquía de hilos y mapeo de memoria entre CPU y GPU</p>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h3>📋 Contenidos</h3>
+  <ol>
+    <li><a href="#arquitectura">¿Por qué GPU? Arquitectura comparada</a></li>
+    <li><a href="#flujo">Flujo de ejecución CPU ↔ GPU</a></li>
+    <li><a href="#kernel">El Kernel: función en el dispositivo</a></li>
+    <li><a href="#dimensionalidad">Jerarquía de hilos y dimensionalidad</a></li>
+    <li><a href="#indices">Cálculo de índices globales</a></li>
+    <li><a href="#memoria">Modelo de memoria CUDA</a></li>
+    <li><a href="#mapeo">Mapeo de funciones CPU → GPU</a></li>
+    <li><a href="#patron">Patrón completo: de idea a kernel</a></li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<div class="section" id="arquitectura">
+  <div class="section-label">// sección 01</div>
+  <h2>¿Por qué GPU? Arquitectura comparada</h2>
+
+  <p>Una <strong>CPU</strong> está optimizada para <em>latencia</em>: pocas unidades de cómputo muy potentes que ejecutan tareas complejas secuenciales con cachés grandes. Una <strong>GPU</strong> está optimizada para <em>throughput</em>: miles de núcleos simples que ejecutan la misma operación sobre grandes conjuntos de datos en paralelo.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">// modelo conceptual de hardware</div>
+    <div class="flow">
+      <div class="flow-box cpu">
+        <strong>CPU</strong><br>
+        <span style="font-size:11px">4–32 núcleos<br>Caché L3 grande<br>Control complejo<br>Alta frecuencia</span>
+      </div>
+      <div class="arrow">⟷</div>
+      <div class="flow-box" style="border-color:#334155;color:#64748b">
+        <strong>PCIe Bus</strong><br>
+        <span style="font-size:11px">~16–32 GB/s<br>bidireccional</span>
+      </div>
+      <div class="arrow">⟷</div>
+      <div class="flow-box gpu">
+        <strong>GPU</strong><br>
+        <span style="font-size:11px">1,000–10,000+ núcleos<br>VRAM HBM/GDDR<br>SIMD masivo<br>Alto throughput</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Regla de oro:</strong> La GPU es eficiente cuando el mismo código (kernel) se aplica en paralelo a millones de datos. Si el problema tiene mucha lógica condicional o dependencias secuenciales, la CPU es más rápida.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<div class="section" id="flujo">
+  <div class="section-label">// sección 02</div>
+  <h2>Flujo de ejecución CPU ↔ GPU</h2>
+
+  <p>En CUDA, la CPU (<em>host</em>) orquesta la ejecución y la GPU (<em>device</em>) realiza el trabajo pesado. El flujo siempre sigue estos pasos:</p>
+
+  <ol class="steps">
+    <li>
+      <div class="step-content">
+        <strong>Asignación de memoria en la GPU</strong>
+        <span>Reservar espacio en la VRAM del device con <code style="color:var(--accent3);background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:monospace">cudaMalloc()</code>. La memoria del host y del device son espacios separados.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Transferencia Host → Device (H2D)</strong>
+        <span>Copiar los datos de la RAM (host) a la VRAM (device) con <code style="color:var(--accent3);background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:monospace">cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice)</code>.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Lanzamiento del Kernel</strong>
+        <span>La CPU invoca la función paralela en la GPU con la sintaxis <code style="color:var(--accent1);background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:monospace">kernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(args)</code>. La CPU continúa sin esperar (llamada asíncrona).</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Sincronización (opcional pero frecuente)</strong>
+        <span><code style="color:var(--accent4);background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:monospace">cudaDeviceSynchronize()</code> hace que la CPU espere a que todos los hilos GPU terminen.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Transferencia Device → Host (D2H)</strong>
+        <span>Copiar los resultados de vuelta a la RAM del host con <code style="color:var(--accent3);background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:monospace">cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost)</code>.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Liberación de memoria</strong>
+        <span><code style="color:var(--accent4);background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:monospace">cudaFree()</code> libera la memoria del device. El host libera su memoria con <code style="color:var(--accent4);background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:monospace">free()</code> como siempre.</span>
+      </div>
+    </li>
+  </ol>
+
+  <pre><span class="cm">// Ejemplo completo: suma de vectores (flujo típico)</span>
+<span class="kw">int</span> N = <span class="nu">1024</span>;
+<span class="kw">size_t</span> bytes = N * <span class="kw">sizeof</span>(<span class="kw">float</span>);
+
+<span class="cm">// 1. Asignación en device</span>
+<span class="kw">float</span> *<span class="tp">d_A</span>, *<span class="tp">d_B</span>, *<span class="tp">d_C</span>;
+<span class="fn">cudaMalloc</span>(&amp;d_A, bytes);
+<span class="fn">cudaMalloc</span>(&amp;d_B, bytes);
+<span class="fn">cudaMalloc</span>(&amp;d_C, bytes);
+
+<span class="cm">// 2. H2D</span>
+<span class="fn">cudaMemcpy</span>(d_A, h_A, bytes, <span class="op">cudaMemcpyHostToDevice</span>);
+<span class="fn">cudaMemcpy</span>(d_B, h_B, bytes, <span class="op">cudaMemcpyHostToDevice</span>);
+
+<span class="cm">// 3. Lanzar kernel</span>
+<span class="kw">int</span> blockSize = <span class="nu">256</span>;
+<span class="kw">int</span> gridSize  = (N + blockSize - <span class="nu">1</span>) / blockSize;
+<span class="fn">addVectors</span>&lt;&lt;&lt;gridSize, blockSize&gt;&gt;&gt;(d_A, d_B, d_C, N);
+
+<span class="cm">// 4. Sincronizar</span>
+<span class="fn">cudaDeviceSynchronize</span>();
+
+<span class="cm">// 5. D2H</span>
+<span class="fn">cudaMemcpy</span>(h_C, d_C, bytes, <span class="op">cudaMemcpyDeviceToHost</span>);
+
+<span class="cm">// 6. Liberar</span>
+<span class="fn">cudaFree</span>(d_A); <span class="fn">cudaFree</span>(d_B); <span class="fn">cudaFree</span>(d_C);</pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<div class="section" id="kernel">
+  <div class="section-label">// sección 03</div>
+  <h2>El Kernel: función en el dispositivo</h2>
+
+  <p>Un <strong>kernel</strong> es una función C/C++ marcada con el calificador <code style="color:var(--accent2);background:var(--code-bg);padding:2px 6px;border-radius:3px;font-family:monospace">__global__</code> que se ejecuta en la GPU. CUDA lanza automáticamente tantas instancias de esta función como hilos se configuren en el lanzamiento.</p>
+
+  <div class="callout">
+    <strong>Clave conceptual:</strong> Cada hilo ejecuta el <em>mismo código</em>, pero actúa sobre un <em>dato diferente</em> según su identificador único. Esto se llama modelo <strong>SIMT</strong> (Single Instruction, Multiple Threads).
+  </div>
+
+  <h3>Calificadores de función</h3>
+  <table>
+    <tr><th>Calificador</th><th>Se ejecuta en</th><th>Se llama desde</th><th>Uso</th></tr>
+    <tr>
+      <td><code style="font-family:monospace;color:var(--accent2)">__global__</code></td>
+      <td>GPU (device)</td>
+      <td>CPU (host) o GPU</td>
+      <td>Kernels principales — punto de entrada paralelo</td>
+    </tr>
+    <tr>
+      <td><code style="font-family:monospace;color:var(--accent3)">__device__</code></td>
+      <td>GPU (device)</td>
+      <td>Solo GPU</td>
+      <td>Funciones auxiliares llamadas desde kernels</td>
+    </tr>
+    <tr>
+      <td><code style="font-family:monospace;color:var(--accent4)">__host__</code></td>
+      <td>CPU (host)</td>
+      <td>Solo CPU</td>
+      <td>Funciones normales (implícito por defecto)</td>
+    </tr>
+  </table>
+
+  <pre><span class="cm">// Kernel simple: suma de vectores</span>
+<span class="kw">__global__</span> <span class="kw">void</span> <span class="fn">addVectors</span>(<span class="kw">float</span>* A, <span class="kw">float</span>* B, <span class="kw">float</span>* C, <span class="kw">int</span> N) {
+    <span class="cm">// Cada hilo calcula su índice global único</span>
+    <span class="kw">int</span> i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    <span class="cm">// Guardia: evitar acceso fuera de rango</span>
+    <span class="kw">if</span> (i &lt; N) {
+        C[i] = A[i] + B[i];  <span class="cm">// operación paralela</span>
+    }
+}
+
+<span class="cm">// Función __device__: usable solo dentro de kernels</span>
+<span class="kw">__device__</span> <span class="kw">float</span> <span class="fn">activateReLU</span>(<span class="kw">float</span> x) {
+    <span class="kw">return</span> x &gt; <span class="nu">0.0f</span> ? x : <span class="nu">0.0f</span>;
+}
+
+<span class="cm">// Kernel que llama función __device__</span>
+<span class="kw">__global__</span> <span class="kw">void</span> <span class="fn">applyReLU</span>(<span class="kw">float</span>* data, <span class="kw">int</span> N) {
+    <span class="kw">int</span> i = blockIdx.x * blockDim.x + threadIdx.x;
+    <span class="kw">if</span> (i &lt; N) data[i] = <span class="fn">activateReLU</span>(data[i]);
+}</pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<div class="section" id="dimensionalidad">
+  <div class="section-label">// sección 04</div>
+  <h2>Jerarquía de hilos y dimensionalidad</h2>
+
+  <p>CUDA organiza los hilos en una jerarquía de dos niveles: el <strong>Grid</strong> (cuadrícula) contiene bloques, y cada <strong>Bloque</strong> contiene hilos. Tanto bloques como hilos pueden organizarse en 1D, 2D o 3D.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">// jerarquía de ejecución CUDA</div>
+    <div class="grid-hierarchy">
+      <div class="hier-box grid-level">
+        <div class="hier-label">🟣 Grid</div>
+        <div class="hier-desc">Conjunto de todos los bloques. Se lanza por kernel.</div>
+        <div class="hier-var">gridDim.x / .y / .z</div>
+        <div class="hier-var">blockIdx.x / .y / .z</div>
+      </div>
+      <div class="hier-box block-level">
+        <div class="hier-label">🔵 Block</div>
+        <div class="hier-desc">Grupo de hilos que comparten memoria compartida y pueden sincronizarse.</div>
+        <div class="hier-var">blockDim.x / .y / .z</div>
+        <div class="hier-var">threadIdx.x / .y / .z</div>
+      </div>
+      <div class="hier-box thread-level">
+        <div class="hier-label">🟢 Thread</div>
+        <div class="hier-desc">Unidad mínima de ejecución. Cada uno corre el mismo kernel con ID único.</div>
+        <div class="hier-var">Identificado por:</div>
+        <div class="hier-var">(blockIdx, threadIdx)</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Configuración por dimensionalidad</h3>
+  <p>La elección de dimensiones debe reflejar la estructura natural de los datos:</p>
+
+  <div class="cards3">
+    <div class="dim-card">
+      <div class="dim-title">1D</div>
+      <div class="hier-desc">Arrays, vectores, series temporales, audio.</div>
+      <code>dim3 block(256);
+dim3 grid(N/256);
+kernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;()</code>
+    </div>
+    <div class="dim-card">
+      <div class="dim-title">2D</div>
+      <div class="hier-desc">Matrices, imágenes, multiplicación matricial.</div>
+      <code>dim3 block(16, 16);
+dim3 grid(W/16, H/16);
+kernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;()</code>
+    </div>
+    <div class="dim-card">
+      <div class="dim-title">3D</div>
+      <div class="hier-desc">Volúmenes, voxels, tensores, simulaciones 3D.</div>
+      <code>dim3 block(8, 8, 8);
+dim3 grid(X/8,Y/8,Z/8);
+kernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;()</code>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <strong>Límites de hardware:</strong> El número máximo de hilos por bloque es <strong>1024</strong> (en GPUs modernas). Para bloques 2D: 16×16=256 o 32×32=1024. Para bloques 3D: 8×8×8=512 o 8×8×16=1024.
+  </div>
+
+  <pre><span class="cm">// Ejemplo: kernel 2D para procesamiento de imagen</span>
+<span class="kw">__global__</span> <span class="kw">void</span> <span class="fn">grayscale</span>(<span class="kw">uchar3</span>* input, <span class="kw">unsigned char</span>* output, <span class="kw">int</span> width, <span class="kw">int</span> height) {
+    <span class="kw">int</span> col = blockIdx.x * blockDim.x + threadIdx.x;  <span class="cm">// coordenada x (columna)</span>
+    <span class="kw">int</span> row = blockIdx.y * blockDim.y + threadIdx.y;  <span class="cm">// coordenada y (fila)</span>
+
+    <span class="kw">if</span> (col &lt; width &amp;&amp; row &lt; height) {
+        <span class="kw">int</span> idx = row * width + col;  <span class="cm">// índice lineal en memoria</span>
+        <span class="kw">uchar3</span> pixel = input[idx];
+        output[idx] = <span class="nu">0.299f</span> * pixel.x + <span class="nu">0.587f</span> * pixel.y + <span class="nu">0.114f</span> * pixel.z;
+    }
+}
+
+<span class="cm">// Lanzamiento</span>
+<span class="kw">dim3</span> blockDim(<span class="nu">16</span>, <span class="nu">16</span>);
+<span class="kw">dim3</span> gridDim( (width + <span class="nu">15</span>) / <span class="nu">16</span>, (height + <span class="nu">15</span>) / <span class="nu">16</span> );
+<span class="fn">grayscale</span>&lt;&lt;&lt;gridDim, blockDim&gt;&gt;&gt;(d_input, d_output, width, height);</pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<div class="section" id="indices">
+  <div class="section-label">// sección 05</div>
+  <h2>Cálculo de índices globales</h2>
+
+  <p>El cálculo del índice global es el núcleo de la programación CUDA: permite que cada hilo sepa <em>qué elemento</em> debe procesar.</p>
+
+  <h3>1D — Caso base</h3>
+  <div class="formula">
+    <span class="var">i</span> = <span class="var">blockIdx.x</span> <span class="op2">×</span> <span class="var">blockDim.x</span> <span class="op2">+</span> <span class="var">threadIdx.x</span>
+  </div>
+
+  <h3>2D — Para matrices e imágenes</h3>
+  <div class="formula">
+    <span class="var">col</span> = <span class="var">blockIdx.x</span> <span class="op2">×</span> <span class="var">blockDim.x</span> <span class="op2">+</span> <span class="var">threadIdx.x</span><br>
+    <span class="var">row</span> = <span class="var">blockIdx.y</span> <span class="op2">×</span> <span class="var">blockDim.y</span> <span class="op2">+</span> <span class="var">threadIdx.y</span><br>
+    <span class="var">idx</span> = <span class="var">row</span> <span class="op2">×</span> <span class="var">width</span> <span class="op2">+</span> <span class="var">col</span>
+  </div>
+
+  <h3>3D — Para volúmenes/tensores</h3>
+  <div class="formula">
+    <span class="var">x</span> = <span class="var">blockIdx.x</span> <span class="op2">×</span> <span class="var">blockDim.x</span> <span class="op2">+</span> <span class="var">threadIdx.x</span><br>
+    <span class="var">y</span> = <span class="var">blockIdx.y</span> <span class="op2">×</span> <span class="var">blockDim.y</span> <span class="op2">+</span> <span class="var">threadIdx.y</span><br>
+    <span class="var">z</span> = <span class="var">blockIdx.z</span> <span class="op2">×</span> <span class="var">blockDim.z</span> <span class="op2">+</span> <span class="var">threadIdx.z</span><br>
+    <span class="var">idx</span> = <span class="var">z</span> <span class="op2">×</span> (<span class="var">dimX</span> <span class="op2">×</span> <span class="var">dimY</span>) <span class="op2">+</span> <span class="var">y</span> <span class="op2">×</span> <span class="var">dimX</span> <span class="op2">+</span> <span class="var">x</span>
+  </div>
+
+  <div class="callout success">
+    <strong>Guardia de rango:</strong> Siempre verificar <code style="font-family:monospace">if (i &lt; N)</code> antes de acceder a memoria. Si N no es múltiplo del tamaño de bloque, los hilos excedentes existirán pero no deben leer/escribir memoria válida.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<div class="section" id="memoria">
+  <div class="section-label">// sección 06</div>
+  <h2>Modelo de memoria CUDA</h2>
+
+  <p>CUDA tiene una jerarquía de tipos de memoria con diferentes velocidades, ámbitos y capacidades. Entender esta jerarquía es crítico para el rendimiento.</p>
+
+  <table>
+    <tr>
+      <th>Tipo</th>
+      <th>Ubicación</th>
+      <th>Velocidad</th>
+      <th>Ámbito</th>
+      <th>Declaración</th>
+    </tr>
+    <tr>
+      <td>Registros</td>
+      <td>Chip (SM)</td>
+      <td><span class="tag fast">Muy rápido</span></td>
+      <td><span class="tag scope">Por hilo</span></td>
+      <td>Variables locales automáticas</td>
+    </tr>
+    <tr>
+      <td>Memoria compartida</td>
+      <td>Chip (SM)</td>
+      <td><span class="tag fast">Muy rápido</span></td>
+      <td><span class="tag scope">Por bloque</span></td>
+      <td><code style="font-family:monospace;color:var(--accent2)">__shared__</code></td>
+    </tr>
+    <tr>
+      <td>Memoria global</td>
+      <td>VRAM (off-chip)</td>
+      <td><span class="tag slow">~400–800 ciclos</span></td>
+      <td><span class="tag scope">Todo el kernel</span></td>
+      <td><code style="font-family:monospace;color:var(--accent1)">cudaMalloc()</code></td>
+    </tr>
+    <tr>
+      <td>Memoria constante</td>
+      <td>VRAM + caché L1</td>
+      <td><span class="tag fast">Rápido si hit</span></td>
+      <td><span class="tag scope">Solo lectura</span></td>
+      <td><code style="font-family:monospace;color:var(--accent3)">__constant__</code></td>
+    </tr>
+    <tr>
+      <td>Memoria de textura</td>
+      <td>VRAM + caché 2D</td>
+      <td><span class="tag fast">Rápido + filtrado</span></td>
+      <td><span class="tag scope">Solo lectura</span></td>
+      <td>Objeto de textura</td>
+    </tr>
+    <tr>
+      <td>Memoria local</td>
+      <td>VRAM (spill)</td>
+      <td><span class="tag slow">Lento</span></td>
+      <td><span class="tag scope">Por hilo</span></td>
+      <td>Automático (desborde de registros)</td>
+    </tr>
+  </table>
+
+  <h3>Memoria compartida: el truco de rendimiento</h3>
+  <p>La memoria compartida (<code style="color:var(--accent2);font-family:monospace">__shared__</code>) es ~100× más rápida que la global. El patrón clásico es cargar datos en shared memory, sincronizar hilos con <code style="color:var(--accent1);font-family:monospace">__syncthreads()</code>, y operar sobre ella.</p>
+
+  <pre><span class="kw">__global__</span> <span class="kw">void</span> <span class="fn">matMulShared</span>(<span class="kw">float</span>* A, <span class="kw">float</span>* B, <span class="kw">float</span>* C, <span class="kw">int</span> N) {
+    <span class="kw">__shared__</span> <span class="kw">float</span> tileA[<span class="nu">16</span>][<span class="nu">16</span>];  <span class="cm">// tile en memoria compartida</span>
+    <span class="kw">__shared__</span> <span class="kw">float</span> tileB[<span class="nu">16</span>][<span class="nu">16</span>];
+
+    <span class="kw">int</span> tx = threadIdx.x, ty = threadIdx.y;
+    <span class="kw">int</span> row = blockIdx.y * <span class="nu">16</span> + ty;
+    <span class="kw">int</span> col = blockIdx.x * <span class="nu">16</span> + tx;
+    <span class="kw">float</span> sum = <span class="nu">0.0f</span>;
+
+    <span class="kw">for</span> (<span class="kw">int</span> t = <span class="nu">0</span>; t &lt; N / <span class="nu">16</span>; t++) {
+        tileA[ty][tx] = A[row * N + (t * <span class="nu">16</span> + tx)];  <span class="cm">// carga cooperativa</span>
+        tileB[ty][tx] = B[(t * <span class="nu">16</span> + ty) * N + col];
+        <span class="fn">__syncthreads</span>();                                <span class="cm">// barrera de bloque</span>
+
+        <span class="kw">for</span> (<span class="kw">int</span> k = <span class="nu">0</span>; k &lt; <span class="nu">16</span>; k++) sum += tileA[ty][k] * tileB[k][tx];
+        <span class="fn">__syncthreads</span>();
+    }
+    C[row * N + col] = sum;
+}</pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<div class="section" id="mapeo">
+  <div class="section-label">// sección 07</div>
+  <h2>Mapeo de funciones CPU → GPU</h2>
+
+  <p>Toda operación que en CPU se hace con un bucle <code style="font-family:monospace;color:var(--accent4)">for</code> sobre datos, puede mapearse a un kernel donde <em>cada iteración es un hilo</em>.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">// equivalencia CPU ↔ GPU</div>
+    <div class="mapping-grid">
+      <div class="mapping-side cpu-side">
+        <h4>🖥️ CPU (Secuencial)</h4>
+        <div class="mapping-item">for i in range(N)</div>
+        <div class="mapping-item">for (i=0; i&lt;N; i++)</div>
+        <div class="mapping-item">for (row=0; ...)</div>
+        <div class="mapping-item">  for (col=0; ...)</div>
+        <div class="mapping-item">Array local</div>
+        <div class="mapping-item">Función normal</div>
+        <div class="mapping-item">malloc / free</div>
+      </div>
+      <div class="mapping-arrows">
+        <span>→</span>
+        <span>→</span>
+        <span>→</span>
+        <span>→</span>
+        <span>→</span>
+        <span>→</span>
+        <span>→</span>
+      </div>
+      <div class="mapping-side gpu-side">
+        <h4>⚡ GPU (Paralelo)</h4>
+        <div class="mapping-item">1D kernel: threadIdx.x</div>
+        <div class="mapping-item">1D kernel con guardia</div>
+        <div class="mapping-item">2D kernel: blockIdx.y</div>
+        <div class="mapping-item">2D kernel: blockIdx.x</div>
+        <div class="mapping-item">__shared__ / global mem</div>
+        <div class="mapping-item">__global__ / __device__</div>
+        <div class="mapping-item">cudaMalloc / cudaFree</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Ejemplo de transformación</h3>
+  <pre><span class="cm">// ── CPU: función map sobre array ──────────────────────</span>
+<span class="kw">void</span> <span class="fn">squareCPU</span>(<span class="kw">float</span>* data, <span class="kw">int</span> N) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; N; i++) {
+        data[i] = data[i] * data[i];  <span class="cm">// iteración secuencial</span>
+    }
+}
+
+<span class="cm">// ── GPU: mismo trabajo, todos los hilos en paralelo ───</span>
+<span class="kw">__global__</span> <span class="kw">void</span> <span class="fn">squareGPU</span>(<span class="kw">float</span>* data, <span class="kw">int</span> N) {
+    <span class="kw">int</span> i = blockIdx.x * blockDim.x + threadIdx.x;  <span class="cm">// reemplaza el loop</span>
+    <span class="kw">if</span> (i &lt; N) data[i] = data[i] * data[i];
+}
+
+<span class="cm">// ── CPU: reducción (suma) ─────────────────────────────</span>
+<span class="kw">float</span> <span class="fn">sumCPU</span>(<span class="kw">float</span>* data, <span class="kw">int</span> N) {
+    <span class="kw">float</span> total = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; N; i++) total += data[i];
+    <span class="kw">return</span> total;
+}
+
+<span class="cm">// ── GPU: reducción paralela con memoria compartida ────</span>
+<span class="kw">__global__</span> <span class="kw">void</span> <span class="fn">sumGPU</span>(<span class="kw">float</span>* data, <span class="kw">float</span>* result, <span class="kw">int</span> N) {
+    <span class="kw">__shared__</span> <span class="kw">float</span> partial[<span class="nu">256</span>];
+    <span class="kw">int</span> i = blockIdx.x * blockDim.x + threadIdx.x;
+    partial[threadIdx.x] = (i &lt; N) ? data[i] : <span class="nu">0.0f</span>;
+    <span class="fn">__syncthreads</span>();
+
+    <span class="kw">for</span> (<span class="kw">int</span> stride = blockDim.x / <span class="nu">2</span>; stride &gt; <span class="nu">0</span>; stride /= <span class="nu">2</span>) {
+        <span class="kw">if</span> (threadIdx.x &lt; stride) partial[threadIdx.x] += partial[threadIdx.x + stride];
+        <span class="fn">__syncthreads</span>();
+    }
+    <span class="kw">if</span> (threadIdx.x == <span class="nu">0</span>) <span class="fn">atomicAdd</span>(result, partial[<span class="nu">0</span>]);
+}</pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<div class="section" id="patron">
+  <div class="section-label">// sección 08</div>
+  <h2>Patrón completo: de idea a kernel</h2>
+
+  <p>Para diseñar cualquier kernel, seguir este proceso mental:</p>
+
+  <ol class="steps">
+    <li>
+      <div class="step-content">
+        <strong>Identificar el paralelismo</strong>
+        <span>¿Qué operación se repite independientemente? Un bucle <code style="font-family:monospace">for</code> cuyos iteraciones no dependen entre sí es candidato ideal.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Elegir la dimensionalidad</strong>
+        <span>¿Los datos son 1D (vector), 2D (imagen/matriz) o 3D (volumen)? La dimensionalidad del kernel debe reflejar la del problema.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Definir el trabajo por hilo</strong>
+        <span>Cada hilo procesa exactamente <em>un elemento</em> (o un tile con memoria compartida). Calcular el índice global a partir de <code style="font-family:monospace">blockIdx</code> y <code style="font-family:monospace">threadIdx</code>.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Dimensionar el lanzamiento</strong>
+        <span>Elegir <code style="font-family:monospace">blockDim</code> (típicamente 128, 256 o 512 hilos) y calcular <code style="font-family:monospace">gridDim = (N + blockDim - 1) / blockDim</code> para cubrir todos los datos.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <strong>Gestionar la memoria</strong>
+        <span>Usar <code style="font-family:monospace;color:var(--accent3)">__shared__</code> para datos accedidos múltiples veces por el mismo bloque. Asegurar accesos coalescentes a memoria global para máximo ancho de banda.</span>
+      </div>
+    </li>
+  </ol>
+
+  <div class="callout success">
+    <strong>Regla de aceleradores:</strong> Una GPU solo vale la pena si el trabajo paralelo supera con creces la latencia de transferencia PCIe (H2D + D2H). Para datos pequeños (&lt; ~100 KB) y operaciones simples, la CPU suele ser más rápida.
+  </div>
+
+  <hr>
+
+  <p style="text-align:center; color:var(--muted); font-size:13px; font-family:'JetBrains Mono', monospace;">
+    Programación GPU con CUDA — Material de cátedra · Computación Paralela
+  </p>
+</div>
+
+</body>
+</html>
